@@ -47,7 +47,9 @@ flowchart TD
 
 Keep the terminal open while you use the app. Press **Ctrl+C** in the terminal when you want to stop it.
 
-You can also use the [hosted Grid Forecast Lab](https://ads506-grid-forecast-lab.readybadge1025.chatgpt.site) through your browser. To reproduce the analysis in Quarto, open **Python / Quarto** in the app and choose **Download Quarto bundle**.
+*Download the project files*
+
+To reproduce the analysis in Quarto, open Python / Quarto in the app and select Download Project Files. Extract forecasting-project.zip to access the Quarto document, Python code, and requirements file.
 
 ## What each step does and why it matters
 

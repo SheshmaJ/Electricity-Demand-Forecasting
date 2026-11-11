@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0e2034">
+<meta name="description" content="A training-first electricity demand forecasting workspace for ADS-506.">
+<title>Grid Forecast Lab · ADS-506</title>
+<link rel="icon" href="mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script defer src="app.js"></script>
+</head>
+<body>
+<svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1"/><rect x="13.5" y="3.5" width="7" height="7" rx="1"/><rect x="3.5" y="13.5" width="7" height="7" rx="1"/><rect x="13.5" y="13.5" width="7" height="7" rx="1"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 4v16h16M7 15l4-5 4 2 5-6"/></symbol>
+<symbol id="i-stack" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/></symbol>
+<symbol id="i-repeat" viewBox="0 0 24 24"><path d="m16 2 4 4-4 4M4 11V9a3 3 0 0 1 3-3h13M8 22l-4-4 4-4m12-1v2a3 3 0 0 1-3 3H4"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3m-4 5v2"/></symbol>
+<symbol id="i-code" viewBox="0 0 24 24"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-2-15-4 18"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="2.5" fill="currentColor"/><circle cx="16" cy="17" r="2.5" fill="currentColor"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h6l-1 8 9-12h-6l1-8Z"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v13m-5-5 5 5 5-5M4 17v4h16v-4"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></symbol>
+</svg>
+<div class="shell">
+<aside class="rail">
+  <a class="brand" href="#overview"><span class="brand-icon"><svg><use href="#i-bolt"/></svg></span><span>Grid Forecast Lab<small>ADS-506 · TEAM 4</small></span></a>
+  <div class="rail-label">WORKSPACE</div>
+  <nav aria-label="Workspace">
+    <a href="#overview" data-nav="overview"><svg><use href="#i-grid"/></svg>Overview</a>
+    <a href="#data" data-nav="data"><svg><use href="#i-upload"/></svg>Data &amp; cleaning</a>
+    <a href="#diagnostics" data-nav="diagnostics"><svg><use href="#i-chart"/></svg>Training diagnostics</a>
+    <a href="#models" data-nav="models"><svg><use href="#i-stack"/></svg>Forecast models</a>
+    <a href="#cv" data-nav="cv"><svg><use href="#i-repeat"/></svg>Cross-validation</a>
+    <a href="#holdout" data-nav="holdout"><svg><use href="#i-lock"/></svg>Final holdout<span class="nav-dot"></span></a>
+    <a href="#forecast" data-nav="forecast"><svg><use href="#i-chart"/></svg>Future forecasts</a>
+  </nav>
+  <div class="rail-label second">PROJECT TOOLS</div>
+  <nav aria-label="Project tools">
+    <a href="#settings" data-nav="settings"><svg><use href="#i-settings"/></svg>Shared settings</a>
+    <a href="#code" data-nav="code"><svg><use href="#i-code"/></svg>Python / Quarto</a>
+  </nav>
+  <div class="rail-footer"><span class="live-dot"></span><div>Local data session<small>Uploads stay in your browser</small></div></div>
+</aside>
+<div class="work">
+  <header class="top"><div class="crumb">ADS-506 <span>/</span> <strong id="crumb">Overview</strong></div><span class="badge lock-badge" id="lock-state"><svg><use href="#i-lock"/></svg>Holdout sealed</span></header>
+  <main id="main">
+    <section id="overview" class="view">
+      <div class="hero">
+        <div class="hero-copy"><div class="eyebrow hero-tag"><span></span> TIME SERIES PROJECT</div>
+          <h1>Electricity Demand<br>Forecasting</h1>
+          <p>A training-first workspace for daily electricity demand across California, Texas, and New York.</p>
+          <div class="actions"><a class="btn primary" href="#data"><svg><use href="#i-upload"/></svg> Import hourly data</a><button class="btn hero-secondary" data-demo>Try sample data <svg><use href="#i-arrow"/></svg></button></div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="signal-title"><span></span> WEEKLY LOAD PROFILE</div>
+          <svg viewBox="0 0 450 175" preserveAspectRatio="none">
+            <defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#52dfc2" stop-opacity=".34"/><stop offset="1" stop-color="#52dfc2" stop-opacity=".01"/></linearGradient></defs>
+            <path d="M0 16h450M0 50h450M0 84h450M0 118h450M0 152h450M0 16v136M75 16v136M150 16v136M225 16v136M300 16v136M375 16v136M449 16v136" stroke="#c3e8ff" opacity=".16" fill="none"/>
+            <path d="M0 132C15 129 23 102 37 100S60 115 76 86S100 51 115 66S135 101 151 76S181 37 196 57S213 91 226 70S246 26 265 45S285 76 301 58S319 34 335 50S355 104 375 103S398 79 414 102S431 124 450 116V152H0Z" fill="url(#area)"/>
+            <path d="M0 132C15 129 23 102 37 100S60 115 76 86S100 51 115 66S135 101 151 76S181 37 196 57S213 91 226 70S246 26 265 45S285 76 301 58S319 34 335 50S355 104 375 103S398 79 414 102S431 124 450 116" stroke="#63e5c8" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/>
+            <path d="M0 143 22 133 44 140 67 119 89 102 112 112 135 106 156 110 178 85 201 94 225 83 247 88 270 66 292 81 315 73 337 81 359 115 381 119 404 110 428 138 450 131" stroke="#83a9ff" stroke-width="2" stroke-dasharray="4 5" fill="none"/>
+            <path d="M246 16v136" stroke="#85afca" stroke-dasharray="3 4" opacity=".75"/><circle cx="246" cy="42" r="5" fill="#a0ffe6" stroke="#18334c" stroke-width="2"/>
+          </svg>
+          <div class="signal-days"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span></div>
+          <div class="signal-note">Illustrative profile</div>
+        </div>
+      </div>
+      <div class="region-grid" id="region-cards"></div>
+      <div class="section-head overview-head"><div><div class="eyebrow">PROJECT WORKFLOW</div><h2>From hourly data to final forecasts</h2></div><a class="quiet-link" href="#settings">View shared settings <svg><use href="#i-arrow"/></svg></a></div>
+      <div class="workflow">
+        <a href="#data" class="step"><span>01</span><svg><use href="#i-upload"/></svg><strong>Prepare data</strong><p>Convert hourly readings to daily MW and review flagged dates.</p></a>
+        <a href="#diagnostics" class="step"><span>02</span><svg><use href="#i-chart"/></svg><strong>Inspect training</strong><p>Check seasonality, autocorrelation, and stationarity.</p></a>
+        <a href="#cv" class="step"><span>03</span><svg><use href="#i-repeat"/></svg><strong>Validate models</strong><p>Compare four models across expanding training origins.</p></a>
+        <a href="#holdout" class="step"><span>04</span><svg><use href="#i-lock"/></svg><strong>Evaluate holdout</strong><p>Freeze the run, then score the held-out forecasts.</p></a>
+        <a href="#forecast" class="step"><span>05</span><svg><use href="#i-chart"/></svg><strong>Forecast demand</strong><p>Plot predictions beyond the latest available observation.</p></a>
+      </div>
+      <div class="protocol"><svg><use href="#i-lock"/></svg><div><strong>Training and holdout stay separate</strong><p id="protocol-dates"></p></div></div>
+    </section>
+
+    <section id="data" class="view" hidden>
+      <div class="section-head"><div><div class="eyebrow">01 · DATA PREPARATION</div><h1>Data &amp; cleaning</h1><p>Import hourly observations, then review the daily averages and quality checks for training.</p></div><button class="btn secondary" data-demo>Try sample data</button></div>
+      <div class="twocol data-layout">
+        <article class="card"><h2>Import hourly data</h2><p class="muted">Select a region and upload its EIA workbook or paste CSV or tab-separated rows with a header.</p>
+          <form id="import-form">
+            <label>Region<select id="import-region"></select></label>
+            <div class="tabs" role="group" aria-label="Import method"><button type="button" class="tab active" data-import-mode="file">Upload file</button><button type="button" class="tab" data-import-mode="paste">Paste rows</button></div>
+            <div id="import-file-panel"><label class="drop"><svg><use href="#i-upload"/></svg><span>Choose hourly data file</span><small>.xlsx, .csv or .tsv</small><input id="hourly-file" type="file" accept=".xlsx,.csv,.tsv,.txt"></label></div>
+            <div id="import-paste-panel" hidden><label>Hourly data<textarea id="hourly-paste" rows="6" placeholder="Local date,Hour,Demand&#10;2024-01-01,1,27483&#10;2024-01-01,2,26512"></textarea></label></div>
+            <label class="tick"><input type="checkbox" id="hour-ending"> UTC or timestamp-only values mark the end of each hour</label>
+            <div class="actions"><button class="btn dark" type="submit">Add to session <svg><use href="#i-arrow"/></svg></button></div>
+          </form>
+          <details class="guide"><summary>Supported columns and time zones</summary><p>For EIA workbooks, the importer reads <strong>Published Hourly Data</strong>. It uses <code>Local date</code>, <code>UTC time</code> when present, and <code>Demand</code>. Text accepts <code>Local date,Hour,Demand</code>, <code>UTC time,Demand</code>, or <code>timestamp,mw</code>. If <code>Region</code> is present, rows are filtered to the selected region. ISO timestamps work best.</p><p>A supplied local date sets the aggregation day. For UTC-only input, dates are assigned in Pacific, Central, or Eastern time by region. For EIA hour-ending timestamps without local dates, select the checkbox.</p><p><a href="https://www.eia.gov/electricity/930-content/about.html" target="_blank" rel="noopener">EIA-930 data documentation ↗</a></p></details>
+        </article>
+        <article class="card"><h2>Session sources</h2><p class="muted">Add a source for each region selected in Shared settings. Adding a new source replaces that region’s prior import.</p><div id="sources"></div><div class="divider"></div><h3>Build training series</h3><p class="muted">Only days through TRAIN_END enter the preview and audit. Missing or nonpositive readings are excluded from hourly averages. DST dates use their actual 23- or 25-hour expectation.</p><button class="btn dark" id="clean-button">Build daily averages <svg><use href="#i-arrow"/></svg></button><p class="micro" id="clean-note"></p></article>
+      </div>
+      <div id="clean-output" class="card wide" hidden>
+        <div class="inline-head"><div><h2>Training daily averages</h2><p class="muted" id="training-stats"></p></div><div class="actions"><label class="compact">Region<select id="clean-region"></select></label><button class="btn secondary" id="daily-download"><svg><use href="#i-down"/></svg>Daily CSV</button></div></div>
+        <div id="training-chart"></div>
+        <div class="inline-head audit-head"><div><h3>Training quality audit</h3><p class="muted">Relative spikes and dips are review flags. Excluded days appear as gaps.</p></div><label class="compact">Show<select id="audit-filter"><option>All flags</option><option>DST</option><option>Missing or duplicate</option><option>Demand anomaly</option></select></label></div>
+        <div id="audit-table"></div>
+      </div>
+    </section>
+
+    <section id="diagnostics" class="view" hidden>
+      <div class="section-head"><div><div class="eyebrow">02 · TRAINING ONLY</div><h1>Training diagnostics</h1><p>Inspect the daily series before comparing forecast models.</p></div><span class="badge"><span class="live-dot"></span>Training data only</span></div>
+      <div class="card">
+        <div class="inline-head"><div><h2>Decomposition and stationarity</h2><p class="muted">Weekly STL uses period 7. ACF and PACF inspect daily lags. ADF tests for a unit root, and KPSS tests level stationarity.</p></div><div class="actions"><label class="compact">Region<select id="diag-region"></select></label><button class="btn dark" id="diag-button">Run diagnostics</button></div></div>
+        <div id="diag-output" class="empty">Build daily averages in <a href="#data">Data &amp; cleaning</a> to begin.</div>
+      </div>
+    </section>
+
+    <section id="models" class="view" hidden>
+      <div class="section-head"><div><div class="eyebrow">03 · FORECAST SPECIFICATIONS</div><h1>Forecast models</h1><p>Four prespecified candidates share the same origin dates and observed targets.</p></div><a class="btn dark" href="#cv">Go to cross-validation <svg><use href="#i-arrow"/></svg></a></div>
+      <div class="twocol model-grid">
+        <article class="card model"><span class="badge">BENCHMARK</span><h2>Seasonal naïve</h2><p>Repeats the last seven available daily model inputs to forecast the corresponding day of the week.</p><code>period = 7</code></article>
+        <article class="card model"><span class="badge">SMOOTHING</span><h2>ETS</h2><p>Estimates the level, a damped additive trend, and an additive weekly seasonal component.</p><code>ETS(A, A<sub>d</sub>, A) · weekly seasonality</code></article>
+        <article class="card model"><span class="badge">AUTOREGRESSION</span><h2>ARIMA</h2><p>Fits one autoregressive and one moving-average term after first differencing.</p><code>ARIMA(1, 1, 1)</code></article>
+        <article class="card model"><span class="badge">CALENDAR REGRESSION</span><h2>TSLM</h2><p>Regresses daily MW on a linear trend, weekday indicators, and two pairs of annual Fourier terms.</p><code>trend + weekday + Fourier(K = 2)</code></article>
+      </div>
+      <div class="protocol"><svg><use href="#i-stack"/></svg><div><strong>Compare on paired targets</strong><p>All candidates forecast every lead through the longest horizon. CV marks the lowest-MAE candidate for each selected region and horizon. Model structures stay fixed for holdout.</p></div></div>
+    </section>
+
+    <section id="cv" class="view" hidden>
+      <div class="section-head"><div><div class="eyebrow">04 · MODEL COMPARISON</div><h1>Training cross-validation</h1><p>Fit at expanding origins and score only targets within the training window.</p></div><button class="btn dark" id="cv-button"><svg><use href="#i-repeat"/></svg>Run training CV</button></div>
+      <div class="protocol"><svg><use href="#i-lock"/></svg><div><strong>Every CV target is on or before TRAIN_END</strong><p id="cv-plan"></p></div></div>
+      <div id="cv-output" class="card wide empty">Build daily averages, then run training CV to compare the four candidates.</div>
+    </section>
+
+    <section id="holdout" class="view" hidden>
+      <div class="section-head"><div><div class="eyebrow">05 · FINAL EVALUATION</div><h1>Final holdout</h1><p>Evaluate the frozen specifications on observed demand in the held-out window.</p></div><span class="badge lock-badge" id="holdout-badge"><svg><use href="#i-lock"/></svg>Holdout sealed</span></div>
+      <div class="card wide" id="holdout-gate">
+        <div class="gate-icon"><svg><use href="#i-lock"/></svg></div><h2 id="gate-title">Holdout is sealed</h2><p id="gate-description" class="muted">Run training cross-validation and review the regional winners before opening final evaluation.</p>
+        <p id="holdout-plan" class="muted"></p>
+        <label class="tick" id="gate-review" hidden><input type="checkbox" id="freeze-confirm"> I reviewed training CV and am ready to freeze this run.</label>
+        <div class="actions"><a class="btn secondary" href="#cv">Review training CV</a><button class="btn dark" id="holdout-button" disabled>Freeze &amp; evaluate</button></div>
+      </div>
+      <div id="holdout-output" class="card wide" hidden></div>
+      <div class="actions results-sub" id="forecast-next" hidden><a class="btn dark" href="#forecast">Open forecast dashboard <svg><use href="#i-arrow"/></svg></a></div>
+    </section>
+
+    <section id="forecast" class="view" hidden>
+      <div class="section-head"><div><div class="eyebrow">06 · FUTURE PREDICTIONS</div><h1>Demand forecast dashboard</h1><p>Predict daily average electricity demand beyond the latest usable observation.</p></div></div>
+      <div class="card">
+        <div class="inline-head"><div><h2>Generate a forecast</h2><p class="muted">The app refits the lowest-MAE model from training CV for the selected region and horizon using all available observations.</p></div></div>
+        <div class="compare-controls forecast-controls">
+          <label class="compact">Region<select id="forecast-region"></select></label>
+          <label class="compact">Forecast horizon<select id="forecast-horizon"></select></label>
+          <button type="button" class="btn dark" id="forecast-button" disabled>Generate forecast <svg><use href="#i-arrow"/></svg></button>
+        </div>
+        <p class="muted" id="forecast-gate">Complete <a href="#holdout">final holdout evaluation</a> to open forecasting.</p>
+      </div>
+      <div id="forecast-output" class="card wide" hidden>
+        <div class="inline-head"><div><h2 id="forecast-title"></h2><p class="muted" id="forecast-summary"></p></div><button class="btn secondary" id="forecast-download"><svg><use href="#i-down"/></svg>Forecast CSV</button></div>
+        <div class="legend forecast-legend"><span><i></i>Recent observed MW</span><span><i></i>Predicted MW</span></div>
+        <div id="forecast-chart"></div>
+        <h3 class="results-sub">Daily predictions</h3><div id="forecast-table"></div>
+      </div>
+    </section>
+
+    <section id="settings" class="view" hidden>
+      <div class="section-head"><div><div class="eyebrow">PROJECT CONFIGURATION</div><h1>Shared settings</h1><p>Use one configuration across all regions and export it for your team or Quarto.</p></div><div class="actions"><label class="btn secondary file-button">Import JSON<input id="settings-import" type="file" accept=".json,application/json"></label><button class="btn secondary" id="settings-download"><svg><use href="#i-down"/></svg>Export JSON</button></div></div>
+      <form id="settings-form">
+        <div class="twocol">
+          <article class="card"><h2>Split and horizons</h2><p class="muted">Dates are inclusive. The training cutoff must precede the test start.</p><div class="field-grid">
+            <label>TRAIN_END<input name="TRAIN_END" type="date" required></label><label>TEST_START<input name="TEST_START" type="date" required></label><label>TEST_END<input name="TEST_END" type="date" required></label><label>HORIZONS<input name="HORIZONS" type="text" required placeholder="1, 7, 14"></label>
+          </div><fieldset><legend>REGIONS</legend><div id="region-settings" class="check-row"></div></fieldset></article>
+          <article class="card"><h2>Rolling origins and cleaning</h2><p class="muted">Apply the same rules in training and final evaluation.</p><div class="field-grid">
+            <label>CV initial days<input name="CV_INITIAL" type="number" min="56" max="20000" required></label><label>CV step days<input name="CV_STEP" type="number" min="1" max="365" required></label><label>Holdout step days<input name="HOLDOUT_STEP" type="number" min="1" max="365" required></label><label>Latest holdout origin (optional)<input name="HOLDOUT_LAST" type="date"></label><label>Max missing hours per day<input name="MAX_MISSING" type="number" min="0" max="6" required></label>
+          </div><label class="tick"><input name="CA_ANOMALY" type="checkbox"> Treat California readings below 5,000 MW on Nov 2, 2024 as missing</label></article>
+        </div>
+        <div class="actions settings-actions"><button type="submit" class="btn dark">Apply settings</button><button type="button" class="btn secondary" id="restore-defaults">Load defaults</button><span class="micro">Settings persist in this browser. Export JSON to share with teammates.</span></div>
+      </form>
+    </section>
+
+    <section id="code" class="view" hidden>
+      <div class="section-head"><div><div class="eyebrow">REPRODUCIBLE WORKFLOW</div><h1>Python / Quarto</h1><p>Use the same cleaning, model fitting, and scoring functions in the Site and your Quarto project.</p></div><a class="btn dark" href="ads506-quarto.zip" download><svg><use href="#i-down"/></svg>Download Quarto bundle</a></div>
+      <div class="card"><h2>Run in VS Code</h2><p class="muted">Extract the bundle. Put the EIA regional workbooks in <code>data/</code> and optionally export the Site settings into the project folder.</p><code class="command">py -m pip install -r requirements.txt</code><p class="muted">Select the matching Python kernel and run the training chunks. The holdout chunk has <code>eval: false</code> until you approve the CV results.</p></div>
+      <div class="card wide"><div class="inline-head"><div class="tabs" role="group" aria-label="Code file"><button class="tab active" data-code="grid_forecast.qmd">Quarto workflow</button><button class="tab" data-code="forecast_lab.py">Python engine</button><button class="tab" data-code="requirements.txt">Requirements</button></div><div class="actions"><button class="btn secondary" id="copy-code">Copy code</button><a class="btn secondary" id="download-code" href="grid_forecast.qmd" download><svg><use href="#i-down"/></svg>Download file</a></div></div><pre class="code"><code id="code-content"></code></pre></div>
+    </section>
+    <footer class="footer"><span>ADS-506 · Electricity Demand Forecasting</span><span>Python / Quarto <span class="tiny-dot"></span> EIA-930</span></footer>
+  </main>
+</div>
+</div>
+<div id="run-status" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

@@ -1,0 +1,130 @@
+---
+title: "ADS-506 | Electricity Demand Forecasting"
+subtitle: "California, Texas, and New York"
+jupyter: python3
+format:
+  html:
+    toc: true
+    code-fold: false
+execute:
+  warning: false
+---
+
+# Setup and hourly imports
+
+Keep `forecast_lab.py` alongside this file. In VS Code on Windows, install the kernel and libraries with `py -m pip install -r requirements.txt`, select the matching Python kernel, and run the chunks in order. Place the EIA regional workbooks under `data/`. Export Site settings to `settings.json` to reproduce a run. The final chunk is disabled until you approve the CV results and freeze the settings.
+
+```{python}
+from pathlib import Path
+import json
+import pandas as pd
+import matplotlib.pyplot as plt
+from IPython.display import display
+from forecast_lab import (
+    CODES, DEFAULTS, build_training, diagnostics, read_project_files,
+    run_cv, run_holdout, score, validate,
+)
+
+settings_file = Path("settings.json")
+settings = json.loads(settings_file.read_text(encoding="utf-8")) if settings_file.exists() else DEFAULTS
+cfg = validate(settings)
+sources = read_project_files({
+    region: Path("data") / f"Region_{CODES[region]}.xlsx"
+    for region in cfg["REGIONS"]
+})
+```
+
+# Cleaning
+
+## Hourly quality and daily averages
+
+The daily target is mean valid hourly MW by local calendar date. The regional time zone determines whether a date expects 23, 24, or 25 hours. The optional California rule is scoped to November 2, 2024. Review the training audit before running CV. Missing daily targets are excluded from scoring. Model inputs use past values to fill gaps.
+
+```{python}
+training, checks = build_training(sources, cfg)
+display(pd.DataFrame([
+    {"Region": region, "Start": y.first_valid_index(), "End": y.last_valid_index(),
+     "Observed days": y.notna().sum(), "Excluded days": y.isna().sum(),
+     "DST dates": sum(row["expected"] != 24 for row in checks[region])}
+    for region, y in training.items()
+]))
+```
+
+# Training diagnostics
+
+## Demand, weekly STL, and stationarity
+
+Use ACF/PACF and ADF/KPSS together to inspect levels and differenced series. Review the output separately for each region. Change `region` to inspect another series. These checks support model interpretation, while CV estimates accuracy.
+
+```{python}
+region = cfg["REGIONS"][0]
+y = training[region]
+report = diagnostics(y)
+if report:
+    fig, axes = plt.subplots(4, 1, figsize=(11, 7), sharex=True)
+    axes[0].plot(y, lw=.7)
+    axes[0].set_ylabel("Demand (MW)")
+    for ax, name in zip(axes[1:], ["trend", "seasonal", "resid"]):
+        ax.plot(pd.to_datetime(report["dates"]), report[name], lw=.7)
+        ax.set_ylabel(name.title())
+    plt.show()
+    tests = report["stationarity"]
+    display(pd.DataFrame(tests).T.drop(columns=["acf", "pacf"]))
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3))
+    for ax, name in zip(axes, ["acf", "pacf"]):
+        ax.stem(tests["Level"][name])
+        ax.set_title(name.upper())
+        ax.set_xlabel("Daily lag")
+    plt.show()
+```
+
+# Models and training cross-validation
+
+Compare the weekly seasonal naïve benchmark, additive damped weekly ETS, ARIMA(1,1,1), and TSLM with trend, weekday indicators, and two annual Fourier pairs. Each expanding origin fits the same model specifications. CV uses training targets only, and the lowest MAE marks the CV winner per region and configured horizon. ME is actual minus forecast. MASE uses observed lag-7 absolute differences available at each origin.
+
+```{python}
+cv_rows, finalists, cv_info = run_cv(training, cfg)
+display(pd.DataFrame(finalists))
+cv_horizons = [row for row in cv_rows if row["day"] in cfg["HORIZONS"]]
+display(score(cv_horizons, ["region", "day", "model"]))
+```
+
+# Final holdout
+
+Freeze settings and model specifications before enabling this chunk. The rolling evaluation can use observations available by each origin to re-estimate model parameters. It uses the same specifications and the original CV winners. Only observed targets inside the evaluation window are scored.
+
+```{python}
+#| eval: false
+holdout_rows, holdout_info = run_holdout(sources, training, cfg)
+requested = [row for row in holdout_rows if row["day"] in cfg["HORIZONS"]]
+display(score(requested, ["region", "day", "model"]))
+daily_errors = score(holdout_rows, ["region", "target", "model"])
+```
+
+# Future demand predictions
+
+After reviewing the final evaluation, refit the training-CV winner for the selected region and horizon on all usable observations. The forecast starts the day after that region's latest usable daily observation.
+
+```{python}
+#| eval: false
+from forecast_lab import future_forecast
+
+region = cfg["REGIONS"][0]
+horizon = max(cfg["HORIZONS"])
+future = future_forecast(sources, cfg, finalists, region, horizon)
+predictions = pd.DataFrame(future["predictions"])
+recent = pd.DataFrame(future["recent"], columns=["date", "observed_mw"])
+forecast_line = pd.concat([
+    recent.tail(1).rename(columns={"observed_mw": "predicted_mw"}),
+    predictions[["date", "predicted_mw"]],
+])
+plt.plot(pd.to_datetime(recent["date"]), recent["observed_mw"], label="Observed")
+plt.plot(pd.to_datetime(forecast_line["date"]), forecast_line["predicted_mw"],
+         "--", label=f"Forecast ({future['model']})")
+plt.axvline(pd.Timestamp(future["origin"]), color="gray", linestyle=":")
+plt.ylabel("Daily average demand (MW)")
+plt.legend()
+plt.gcf().autofmt_xdate()
+plt.show()
+display(predictions)
+```

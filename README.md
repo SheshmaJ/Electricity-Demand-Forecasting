@@ -1,4 +1,4 @@
-# Electricity-Demand-Forecasting
+# Electricity-Demand-Forecasting-automation
 
 
 I turned our ADS-506 time series team project into a website that automates electricity demand forecasting for California, Texas, and New York. Upload hourly EIA data and the app guides you through cleaning the data, comparing models, and checking their accuracy. Then, with one click, you can generate a daily demand forecast, view it on an interactive graph, and download the predictions as a CSV.

@@ -1,7 +1,14 @@
 # Electricity-Demand-Forecasting-automation
 
+**Live website** · [Open the Electricity Demand Forecasting app](https://electricity-demand-forcaecasting.netlify.app)
 
-I turned our ADS-506 time series team project into a website that automates electricity demand forecasting for California, Texas, and New York. Upload hourly EIA data and the app guides you through cleaning the data, comparing models, and checking their accuracy. Then, with one click, you can generate a daily demand forecast, view it on an interactive graph, and download the predictions as a CSV.
+- Try the app with sample data or upload your own hourly EIA demand data for California, Texas, or New York.
+- Check for missing hours and unusual readings, then calculate daily average demand in MW.
+- Explore demand trends and compare weekday and weekend patterns.
+- Compare forecasting models using rolling cross-validation and check their accuracy on a later holdout period.
+- Generate a future demand forecast for your chosen region and horizon, view it on an interactive chart, and download the daily predictions as a CSV.
+
+*I turned our ADS-506 time series team project into a website that automates electricity demand forecasting for California, Texas, and New York. Upload hourly EIA data and the app guides you through cleaning the data, comparing models, and checking their accuracy. Then, with one click, you can generate a daily demand forecast, view it on an interactive graph, and download the predictions as a CSV.*
 
 ## Introduction
 

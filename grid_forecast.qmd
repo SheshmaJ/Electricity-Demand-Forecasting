@@ -128,3 +128,255 @@ plt.gcf().autofmt_xdate()
 plt.show()
 display(predictions)
 ```
+## 8. Time Series Decomposition
+
+```{python}
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from IPython.display import display
+
+from scipy import stats
+from statsmodels.tsa.seasonal import MSTL, STL
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from statsmodels.tsa.stattools import acf, kpss
+from statsmodels.tools.sm_exceptions import InterpolationWarning
+import warnings
+from forecast_lab import causal_fill
+
+regions = sorted(training)
+training_series = {}
+for region in regions:
+    y = causal_fill(training[region]).sort_index().asfreq("D")
+    assert y.notna().all() and y.gt(0).all()
+    assert y.index[-1] == pd.Timestamp(cfg["TRAIN_END"])
+    if len(y) <= 730:
+        raise ValueError(f"{region}: annual MSTL needs more than two years of training data.")
+    training_series[region] = y
+
+
+def component_strength(component, remainder):
+    return max(0, 1 - remainder.var() / (remainder + component).var())
+
+
+strength_rows = []
+for region, y in training_series.items():
+    weekly_stl = STL(y, period=7, robust=True).fit()
+    multi_stl = MSTL(y, periods=(7, 365), stl_kwargs={"robust": True}).fit()
+    strength_rows.append({
+        "Region": region,
+        "Weekly (STL)": component_strength(weekly_stl.seasonal, weekly_stl.resid),
+        "Weekly (MSTL)": component_strength(multi_stl.seasonal["seasonal_7"], multi_stl.resid),
+        "Annual (MSTL)": component_strength(multi_stl.seasonal["seasonal_365"], multi_stl.resid),
+        "Trend (MSTL)": component_strength(multi_stl.trend, multi_stl.resid),
+    })
+
+    fig, axes = plt.subplots(5, 1, figsize=(10, 7), sharex=True)
+    components = {
+        "Observed": y,
+        "Trend": multi_stl.trend,
+        "Weekly": multi_stl.seasonal["seasonal_7"],
+        "Annual": multi_stl.seasonal["seasonal_365"],
+        "Remainder": multi_stl.resid,
+    }
+    for ax, (label, component) in zip(axes, components.items()):
+        ax.plot(component.index, component, linewidth=0.7)
+        ax.set_ylabel(label)
+    axes[-1].set_xlabel("Training date")
+    fig.supylabel("Daily average demand (MW)")
+    fig.suptitle(f"{region} weekly and annual decomposition")
+    fig.tight_layout()
+    plt.show()
+
+strength = pd.DataFrame(strength_rows).set_index("Region")
+display(strength.round(3))
+for region, row in strength.iterrows():
+    stronger = "annual" if row["Annual (MSTL)"] > row["Weekly (MSTL)"] else "weekly"
+    print(f"{region}: weekly {row['Weekly (MSTL)']:.3f}, "
+          f"annual {row['Annual (MSTL)']:.3f}, trend {row['Trend (MSTL)']:.3f}. "
+          f"The {stronger} component has the higher seasonal strength.")
+```
+
+## 9. Feature Engineering
+
+```{python}
+annual_period = 365.25
+first_day = min(y.index[0] for y in training_series.values())
+weekday_cols = [f"weekday_{day}" for day in range(1, 7)]
+
+
+def calendar_features(index, region, k):
+    x = pd.DataFrame({"unique_id": region, "ds": index})
+    elapsed = (x["ds"] - first_day).dt.days
+    x["weekday"] = x["ds"].dt.day_of_week
+    x["month"] = x["ds"].dt.month
+    x["trend"] = elapsed / annual_period
+    for day in range(1, 7):
+        x[f"weekday_{day}"] = (x["weekday"] == day).astype(int)
+    for i in range(1, k + 1):
+        angle = 2 * np.pi * i * elapsed / annual_period
+        x[f"sin_{i}"] = np.sin(angle)
+        x[f"cos_{i}"] = np.cos(angle)
+    return x
+
+
+analysis_horizon = max(cfg["HORIZONS"])
+cv_origins = pd.date_range(
+    max(y.index[0] for y in training_series.values())
+    + pd.Timedelta(days=cfg["CV_INITIAL"] - 1),
+    pd.Timestamp(cfg["TRAIN_END"]) - pd.Timedelta(days=analysis_horizon),
+    freq=f"{cfg['CV_STEP']}D",
+)
+if not len(cv_origins):
+    raise ValueError("No shared training CV origins. Review CV_INITIAL and training coverage.")
+
+k_scores = []
+for region, y in training_series.items():
+    x = calendar_features(y.index, region, 3)
+    actual = training[region].reindex(y.index).to_numpy()
+    origin_rows = y.index.get_indexer(cv_origins)
+    assert (origin_rows >= 0).all() and (origin_rows + analysis_horizon < len(y)).all()
+
+    for k in (1, 2, 3):
+        fourier_cols = [f"{term}_{i}" for i in range(1, k + 1) for term in ("sin", "cos")]
+        columns = ["trend"] + weekday_cols + fourier_cols
+        design = x[columns].assign(intercept=1).to_numpy()
+        errors = []
+        for row in origin_rows:
+            split = row + 1
+            stop = split + analysis_horizon
+            coefficients = np.linalg.lstsq(design[:split], y.iloc[:split], rcond=None)[0]
+            prediction = design[split:stop] @ coefficients
+            observed = actual[split:stop]
+            valid = np.isfinite(observed)
+            errors.extend(np.abs((observed[valid] - prediction[valid]) / observed[valid]))
+        k_scores.append({"Region": region, "K": k, "CV MAPE (%)": 100 * np.mean(errors),
+                         "Scored targets": len(errors)})
+
+k_scores = pd.DataFrame(k_scores)
+mean_mape = k_scores.groupby("K")["CV MAPE (%)"].mean()
+fourier_k = int(mean_mape.idxmin())
+fourier_cols = [f"{term}_{i}" for i in range(1, fourier_k + 1) for term in ("sin", "cos")]
+arima_x_cols = weekday_cols + fourier_cols
+tslm_x_cols = ["trend"] + arima_x_cols
+
+display(k_scores.round(3))
+print(f"Selected shared K = {fourier_k} across {len(cv_origins)} training origins.")
+print(f"Mean regional CV MAPE: {mean_mape.loc[fourier_k]:.3f}%.")
+train_features = pd.concat([
+    calendar_features(y.index, region, fourier_k)
+    for region, y in training_series.items()
+], ignore_index=True)
+```
+
+## 10. Post-Feature Engineering EDA
+
+```{python}
+holdout_dates = pd.date_range(cfg["TEST_START"], cfg["TEST_END"], freq="D")
+future_features = pd.concat([
+    calendar_features(holdout_dates, region, fourier_k)
+    for region in regions
+], ignore_index=True)
+X_df = future_features[["unique_id", "ds"] + arima_x_cols].copy()
+
+feature_checks = []
+for label, features in [("Training", train_features), ("Holdout calendar", future_features)]:
+    assert not features.duplicated(["unique_id", "ds"]).any()
+    assert np.isfinite(features[tslm_x_cols].to_numpy()).all()
+    feature_checks.append({"Period": label, "Rows": len(features),
+                           "Missing predictors": features[tslm_x_cols].isna().sum().sum()})
+
+for region in regions:
+    future_dates = X_df.loc[X_df["unique_id"] == region, "ds"].sort_values()
+    expected = holdout_dates
+    assert pd.DatetimeIndex(future_dates).equals(expected)
+
+display(pd.DataFrame(feature_checks))
+example = train_features.loc[train_features["unique_id"] == regions[0]].head(365)
+ax = example.set_index("ds")[fourier_cols].plot(figsize=(10, 3))
+ax.set(title="Annual Fourier predictors over one year", xlabel="Date", ylabel="Feature value")
+plt.tight_layout()
+plt.show()
+```
+
+## 11. Transformation Assessment
+
+```{python}
+scale_rows = []
+boxcox_lambdas = {}
+boxcox_training = {}
+for region, y in training_series.items():
+    power = stats.boxcox_normmax(y.to_numpy(), method="mle")
+    boxcox_lambdas[region] = power
+    boxcox_training[region] = pd.Series(stats.boxcox(y.to_numpy(), lmbda=power), index=y.index)
+    scales = {"MW": y, "Log": np.log(y), "Box-Cox": boxcox_training[region]}
+
+    fig, axes = plt.subplots(3, 1, figsize=(10, 5.5), sharex=True)
+    for ax, (label, values) in zip(axes, scales.items()):
+        windows = values.resample("28D").agg(["mean", "std", "count"])
+        windows = windows.loc[windows["count"] == 28]
+        correlation = windows["mean"].corr(windows["std"], method="spearman")
+        scale_rows.append({"Region": region, "Scale": label,
+                           "Skewness": stats.skew(values, bias=False),
+                           "Level-spread rho": correlation,
+                           "Lambda": power if label == "Box-Cox" else np.nan})
+        ax.plot(values.index, values, linewidth=0.65)
+        ax.set_ylabel(label)
+    axes[-1].set_xlabel("Training date")
+    fig.suptitle(f"{region} training demand on three scales")
+    fig.tight_layout()
+    plt.show()
+
+scale_checks = pd.DataFrame(scale_rows)
+display(scale_checks.round(3))
+for region, results in scale_checks.groupby("Region"):
+    most_symmetric = results.loc[results["Skewness"].abs().idxmin(), "Scale"]
+    weakest_link = results.loc[results["Level-spread rho"].abs().idxmin(), "Scale"]
+    print(f"{region}: {most_symmetric} has the lowest absolute skewness. "
+          f"{weakest_link} has the weakest level-spread association.")
+```
+
+## 12. Time Series Diagnostics
+
+```{python}
+stationarity_rows = []
+for region, y in training_series.items():
+    difference = y.diff().dropna()
+    fig, axes = plt.subplots(2, 2, figsize=(10, 6))
+    for row, (label, values) in enumerate({"Original MW": y, "First difference": difference}.items()):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", InterpolationWarning)
+            warnings.filterwarnings("ignore", message="kpss currently returns", category=FutureWarning)
+            statistic, _, _, critical = kpss(values, regression="c", nlags="auto")
+        stationarity_rows.append({"Region": region, "Series": label,
+                                  "KPSS": statistic, "5% critical value": critical["5%"],
+                                  "Reject stationarity at 5%": statistic > critical["5%"],
+                                  "ACF lag 7": acf(values, nlags=7)[7]})
+        plot_acf(values, lags=28, zero=False, ax=axes[row, 0], title=f"{label} ACF")
+        plot_pacf(values, lags=28, zero=False, method="ywm", ax=axes[row, 1],
+                  title=f"{label} PACF")
+        for ax in axes[row]:
+            ax.axvline(7, color="gray", linestyle="--", alpha=0.6)
+            ax.set_xlabel("Lag (days)")
+    fig.suptitle(f"{region} training autocorrelation")
+    fig.tight_layout()
+    plt.show()
+
+    ax = difference.plot(figsize=(10, 2.4), linewidth=0.65)
+    ax.axhline(0, color="gray", linewidth=0.7)
+    ax.set(title=f"{region} day-to-day demand changes", xlabel="Training date", ylabel="Change (MW)")
+    plt.tight_layout()
+    plt.show()
+
+stationarity = pd.DataFrame(stationarity_rows)
+display(stationarity.round(3))
+for region in regions:
+    result = stationarity.loc[stationarity["Region"] == region]
+    rejects_level, rejects_difference = result["Reject stationarity at 5%"]
+    if rejects_level and not rejects_difference:
+        print(f"{region}: start manual ARIMA with d = 1.")
+    elif not rejects_level:
+        print(f"{region}: start manual ARIMA with d = 0.")
+    else:
+        print(f"{region}: review the series before fixing d. KPSS rejects both versions.")
+```

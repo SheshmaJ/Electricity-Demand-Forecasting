@@ -5,3 +5,4 @@ tzdata
 matplotlib
 jupyter
 ipykernel
+scipy
